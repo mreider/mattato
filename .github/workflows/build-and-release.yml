@@ -8,6 +8,11 @@ on:
         required: true
         default: true
         type: boolean
+  push:
+    branches: [ main ]
+    paths:
+      - 'releases/*.dmg'
+      - 'RELEASE_NOTES.md'
 
 jobs:
   release:
@@ -125,7 +130,7 @@ jobs:
         fi
 
     - name: Create Release
-      if: ${{ inputs.create_release }}
+      if: ${{ inputs.create_release || github.event_name == 'push' }}
       uses: softprops/action-gh-release@v1
       with:
         tag_name: v${{ steps.version.outputs.VERSION }}
