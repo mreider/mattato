@@ -108,9 +108,15 @@ jobs:
           echo "Using custom release notes from RELEASE_NOTES.md"
           {
             echo 'RELEASE_BODY<<EOF'
-            echo "# Mattato v${VERSION}"
+            echo "## Mattato v${VERSION}"
+            echo ""
+            echo "🍅 **Pomodoro Timer with Time Tracking**"
             echo ""
             cat RELEASE_NOTES.md
+            echo ""
+            echo "---"
+            echo ""
+            echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/v${VERSION}...HEAD"
             echo 'EOF'
           } >> $GITHUB_OUTPUT
         else
