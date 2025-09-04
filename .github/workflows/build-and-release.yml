@@ -1,0 +1,189 @@
+name: Create Release from DMG
+
+on:
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Create GitHub Release'
+        required: true
+        default: true
+        type: boolean
+  push:
+    branches: [ main ]
+    paths:
+      - 'releases/*.dmg'
+      - 'RELEASE_NOTES.md'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Extract version from RELEASE_NOTES.md
+      id: version
+      run: |
+        # Extract version from the first heading in RELEASE_NOTES.md
+        # Expected format: ## What's New in v0.42.0
+        if [ -f "RELEASE_NOTES.md" ]; then
+          VERSION=$(grep -m 1 "## What's New in v" RELEASE_NOTES.md | sed 's/.*v\([0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/')
+          
+          if [ -z "$VERSION" ]; then
+            echo "❌ Could not extract version from RELEASE_NOTES.md"
+            echo "Expected format: ## What's New in v0.42.0"
+            echo "Found:"
+            head -5 RELEASE_NOTES.md
+            exit 1
+          fi
+          
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "✅ Extracted version: $VERSION"
+        else
+          echo "❌ RELEASE_NOTES.md not found"
+          exit 1
+        fi
+        
+    - name: Find matching DMG file
+      id: find_dmg
+      run: |
+        # Look for DMG files in releases directory
+        if [ ! -d "releases" ]; then
+          echo "❌ No releases directory found"
+          echo "Please build a DMG locally first using ./build-local.sh"
+          exit 1
+        fi
+        
+        # List available DMGs
+        echo "📦 Available DMG files:"
+        ls -la releases/*.dmg || {
+          echo "❌ No DMG files found in releases/ directory"
+          echo "Please build a DMG locally first using ./build-local.sh"
+          exit 1
+        }
+        
+        # Find the most recent DMG (by modification time)
+        LATEST_DMG=$(ls -t releases/*.dmg | head -1)
+        DMG_NAME=$(basename "$LATEST_DMG")
+        
+        echo "DMG_PATH=$LATEST_DMG" >> $GITHUB_OUTPUT
+        echo "DMG_NAME=$DMG_NAME" >> $GITHUB_OUTPUT
+        echo "✅ Using DMG: $DMG_NAME"
+        
+        # Verify DMG file size
+        DMG_SIZE=$(ls -lh "$LATEST_DMG" | awk '{print $5}')
+        echo "📊 DMG size: $DMG_SIZE"
+        
+    - name: Build Chrome Extension
+      id: build_extension
+      run: |
+        # Build Chrome extension
+        if [ -d "chrome-extension" ]; then
+          echo "🔧 Building Chrome extension..."
+          chmod +x build-chrome-extension.sh
+          ./build-chrome-extension.sh
+          
+          # Find the generated extension ZIP
+          EXTENSION_ZIP=$(ls -t releases/mattato-timecockpit-bridge-*.zip | head -1)
+          EXTENSION_NAME=$(basename "$EXTENSION_ZIP")
+          
+          echo "EXTENSION_PATH=$EXTENSION_ZIP" >> $GITHUB_OUTPUT
+          echo "EXTENSION_NAME=$EXTENSION_NAME" >> $GITHUB_OUTPUT
+          echo "✅ Chrome extension built: $EXTENSION_NAME"
+        else
+          echo "⚠️ No chrome-extension directory found, skipping extension build"
+        fi
+        
+    - name: Prepare release notes
+      id: release_notes
+      run: |
+        VERSION="${{ steps.version.outputs.VERSION }}"
+        DMG_NAME="${{ steps.find_dmg.outputs.DMG_NAME }}"
+        
+        if [ -f "RELEASE_NOTES.md" ]; then
+          echo "Using custom release notes from RELEASE_NOTES.md"
+          {
+            echo 'RELEASE_BODY<<EOF'
+            echo "## Mattato v${VERSION}"
+            echo ""
+            echo "🍅 **Pomodoro Timer with Time Tracking**"
+            echo ""
+            cat RELEASE_NOTES.md
+            echo ""
+            echo "---"
+            echo ""
+            echo "### Installation"
+            echo "1. Download \`${DMG_NAME}\`"
+            echo "2. Double-click to mount the disk image"
+            echo "3. Drag \`Mattato.app\` to your Applications folder"
+            echo "4. Launch from Applications or Spotlight"
+            echo "5. The timer will appear in your menu bar"
+            echo ""
+            echo "### Build Information"
+            echo "- Version: v${VERSION}"
+            echo "- Built locally and code-signed"
+            echo "- ✅ **Code Signed & Notarized** - No security warnings on macOS"
+            echo "- Release created: $(date -u '+%Y-%m-%d %H:%M UTC')"
+            echo ""
+            echo "### Features"
+            echo "- Menu bar Pomodoro timer"
+            echo "- Session tracking with descriptions"
+            echo "- Export options (Markdown, Bear)"
+            echo "- Persistent history"
+            echo "- Native macOS notifications"
+            echo "- Desktop effects and celebrations"
+            echo ""
+            echo "### System Requirements"
+            echo "- macOS 13.0 or later"
+            echo "- Apple Silicon or Intel Mac"
+            echo ""
+            echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/v${VERSION}...HEAD"
+            echo 'EOF'
+          } >> $GITHUB_OUTPUT
+        else
+          echo "❌ RELEASE_NOTES.md not found"
+          exit 1
+        fi
+
+    - name: Create Release
+      if: ${{ inputs.create_release || github.event_name == 'push' }}
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ steps.version.outputs.VERSION }}
+        name: Mattato v${{ steps.version.outputs.VERSION }}
+        body: ${{ steps.release_notes.outputs.RELEASE_BODY }}
+        files: |
+          ${{ steps.find_dmg.outputs.DMG_PATH }}
+          ${{ steps.build_extension.outputs.EXTENSION_PATH }}
+        draft: false
+        prerelease: false
+        generate_release_notes: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Update README with latest version
+      run: |
+        VERSION="${{ steps.version.outputs.VERSION }}"
+        
+        # Update the README to show the latest version
+        if grep -q "Version: [0-9]\+\.[0-9]\+\.[0-9]\+" README.md; then
+          sed -i 's/Version: [0-9]\+\.[0-9]\+\.[0-9]\+/Version: '"$VERSION"'/' README.md
+          echo "✅ Updated README.md with version $VERSION"
+        else
+          echo "⚠️  No version string found in README.md to update"
+        fi
+        
+        # Check if there are changes to commit
+        if git diff --quiet README.md; then
+          echo "No changes to README.md"
+        else
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add README.md
+          git commit -m "Update README with version v$VERSION [skip ci]"
+          git push
+        fi
