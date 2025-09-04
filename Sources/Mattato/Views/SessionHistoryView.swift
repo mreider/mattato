@@ -83,7 +83,7 @@ struct SessionHistoryView: View {
                         .font(.caption)
                     Picker("", selection: $selectedCustomerFilter) {
                         Text("All").tag("")
-                        ForEach(historyManager.preferences.customers, id: \.self) { customer in
+                        ForEach(historyManager.preferences.customers.sorted(by: <), id: \.self) { customer in
                             Text(customer).tag(customer)
                         }
                     }
@@ -96,7 +96,7 @@ struct SessionHistoryView: View {
                         .font(.caption)
                     Picker("", selection: $selectedProjectFilter) {
                         Text("All").tag("")
-                        ForEach(historyManager.preferences.projects, id: \.self) { project in
+                        ForEach(historyManager.preferences.projects.sorted(by: <), id: \.self) { project in
                             Text(project).tag(project)
                         }
                     }
@@ -269,12 +269,12 @@ struct SessionHistoryView: View {
                         HStack(spacing: 12) {
                             Text("From:")
                             DatePicker("", selection: $customFromDate, displayedComponents: .date)
-                                .environment(\.locale, historyManager.preferences.exportDateFormat == "MM.DD.YYYY" ? Locale(identifier: "en_US") : Locale(identifier: "de_DE"))
+                                .environment(\.locale, Locale.current)
                                 .frame(width: 120)
                             
                             Text("To:")
                             DatePicker("", selection: $customToDate, displayedComponents: .date)
-                                .environment(\.locale, historyManager.preferences.exportDateFormat == "MM.DD.YYYY" ? Locale(identifier: "en_US") : Locale(identifier: "de_DE"))
+                                .environment(\.locale, Locale.current)
                                 .frame(width: 120)
                         }
                         .padding(.leading, 20)
@@ -545,7 +545,14 @@ struct SessionHistoryView: View {
     }
     
     private func saveSession(_ session: Session) {
-        historyManager.updateSession(session)
+        // Check if this is a new session or editing existing one
+        if editingSession != nil {
+            // Editing existing session
+            historyManager.updateSession(session)
+        } else {
+            // Adding new session
+            historyManager.addSession(session)
+        }
     }
     
     private func deleteSelectedSessions() {

@@ -74,8 +74,8 @@ struct DesktopTimerView: View {
     @ObservedObject var window: DesktopTimerWindow
     @ObservedObject var historyManager = HistoryManager.shared
     
-    @State private var isEditingMinutes: Bool = false
-    @State private var isEditingSeconds: Bool = false
+    @State private var isEditingTime: Bool = false
+    @State private var timeInput: String = "25:00"
     @State private var editingMinutes: Int = 25
     @State private var editingSeconds: Int = 0
     @State private var sessionDescription: String = "Work Session"
@@ -128,72 +128,31 @@ struct DesktopTimerView: View {
                 .padding(.bottom, size * -0.05)
                 
                 if timerManager.state == .idle {
-                    HStack(spacing: size * 0.01) {
-                        TextField("", text: Binding(
-                            get: { String(editingMinutes) },
-                            set: { newValue in
-                                let filtered = String(newValue.filter { $0.isNumber }.prefix(3))
-                                if let intValue = Int(filtered), intValue <= 999 {
-                                    editingMinutes = intValue
-                                    updateTimerFromInputs()
-                                }
-                            }
-                        ))
-                            .textFieldStyle(.plain)
-                            .multilineTextAlignment(.center)
-                            .font(.system(size: size * 0.08, weight: .bold, design: .monospaced))
-                            .foregroundColor(.white)
-                            .frame(width: size * 0.18)
-                            .padding(size * 0.01)
-                            .background(Color.black.opacity(0.3))
-                            .cornerRadius(6)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
-                            )
-                            .onAppear {
-                                editingMinutes = Int(timerManager.timeRemaining) / 60
-                            }
-                            .onSubmit { 
-                                formatAndMoveToSeconds()
-                            }
-                        
-                        Text(":")
-                            .font(.system(size: size * 0.08, weight: .bold, design: .monospaced))
-                            .foregroundColor(.white)
-                        
-                        TextField("", text: Binding(
-                            get: { String(format: "%02d", editingSeconds) },
-                            set: { newValue in
-                                let filtered = String(newValue.filter { $0.isNumber }.prefix(2))
-                                if let intValue = Int(filtered), intValue <= 59 {
-                                    editingSeconds = intValue
-                                    updateTimerFromInputs()
-                                }
-                            }
-                        ))
-                            .textFieldStyle(.plain)
-                            .multilineTextAlignment(.center)
-                            .font(.system(size: size * 0.08, weight: .bold, design: .monospaced))
-                            .foregroundColor(.white)
-                            .frame(width: size * 0.18)
-                            .padding(size * 0.01)
-                            .background(Color.black.opacity(0.3))
-                            .cornerRadius(6)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
-                            )
-                            .onAppear {
-                                editingSeconds = Int(timerManager.timeRemaining) % 60
-                            }
-                            .onChange(of: timerManager.timeRemaining) { _ in
-                                editingSeconds = Int(timerManager.timeRemaining) % 60
-                            }
-                            .onSubmit { 
-                                formatAndSaveSeconds()
-                            }
-                    }
+                    // Smart time input field inspired by TimeCockpit behavior
+                    TextField("MM:SS", text: $timeInput)
+                        .textFieldStyle(.plain)
+                        .multilineTextAlignment(.center)
+                        .font(.system(size: size * 0.08, weight: .bold, design: .monospaced))
+                        .foregroundColor(.white)
+                        .frame(width: size * 0.4)
+                        .padding(size * 0.01)
+                        .background(Color.black.opacity(0.3))
+                        .cornerRadius(6)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                        )
+                        .onAppear {
+                            let minutes = Int(timerManager.timeRemaining) / 60
+                            let seconds = Int(timerManager.timeRemaining) % 60
+                            timeInput = String(format: "%d:%02d", minutes, seconds)
+                        }
+                        .onChange(of: timeInput) { newValue in
+                            parseSmartTimeInput(newValue)
+                        }
+                        .onSubmit {
+                            finalizeTimeInput()
+                        }
                 }
                 
                 TextField("Session description", text: $sessionDescription)
@@ -216,7 +175,7 @@ struct DesktopTimerView: View {
                 if historyManager.preferences.showCustomerDropdown {
                     Picker("Customer", selection: $selectedCustomer) {
                         Text("None").tag("")
-                        ForEach(historyManager.preferences.customers, id: \.self) { customer in
+                        ForEach(historyManager.preferences.customers.sorted(by: <), id: \.self) { customer in
                             Text(customer).tag(customer)
                         }
                     }
@@ -228,7 +187,7 @@ struct DesktopTimerView: View {
                 if historyManager.preferences.showProjectDropdown {
                     Picker("Project", selection: $selectedProject) {
                         Text("None").tag("")
-                        ForEach(historyManager.preferences.projects, id: \.self) { project in
+                        ForEach(historyManager.preferences.projects.sorted(by: <), id: \.self) { project in
                             Text(project).tag(project)
                         }
                     }
@@ -251,17 +210,85 @@ struct DesktopTimerView: View {
         }
     }
     
+    private func parseSmartTimeInput(_ input: String) {
+        // Smart parsing inspired by TimeCockpit time field behavior
+        let cleanInput = input.filter { $0.isNumber }
+        
+        // Handle different input lengths intelligently
+        switch cleanInput.count {
+        case 0:
+            // Empty input - keep current values
+            return
+        case 1:
+            // Single digit: assume it's minutes (e.g., "2" -> 2:00)
+            if let minutes = Int(cleanInput) {
+                editingMinutes = min(minutes, 999)
+                editingSeconds = 0
+                updateFormattedTimeInput()
+            }
+        case 2:
+            // Two digits: assume it's minutes (e.g., "25" -> 25:00)
+            if let minutes = Int(cleanInput) {
+                editingMinutes = min(minutes, 999)
+                editingSeconds = 0
+                updateFormattedTimeInput()
+            }
+        case 3:
+            // Three digits: first digit is minutes, last two are seconds (e.g., "130" -> 1:30)
+            let minuteStr = String(cleanInput.prefix(1))
+            let secondStr = String(cleanInput.suffix(2))
+            if let minutes = Int(minuteStr), let seconds = Int(secondStr) {
+                editingMinutes = minutes
+                editingSeconds = min(seconds, 59)
+                updateFormattedTimeInput()
+            }
+        case 4:
+            // Four digits: first two are minutes, last two are seconds (e.g., "2530" -> 25:30)
+            let minuteStr = String(cleanInput.prefix(2))
+            let secondStr = String(cleanInput.suffix(2))
+            if let minutes = Int(minuteStr), let seconds = Int(secondStr) {
+                editingMinutes = min(minutes, 999)
+                editingSeconds = min(seconds, 59)
+                updateFormattedTimeInput()
+            }
+        default:
+            // More than 4 digits: take first 3 as minutes, next 2 as seconds
+            let minuteStr = String(cleanInput.prefix(3))
+            let secondStr = String(cleanInput.dropFirst(3).prefix(2))
+            if let minutes = Int(minuteStr), let seconds = Int(secondStr.isEmpty ? "0" : secondStr) {
+                editingMinutes = min(minutes, 999)
+                editingSeconds = min(seconds, 59)
+                updateFormattedTimeInput()
+            }
+        }
+        
+        updateTimerFromInputs()
+    }
+    
+    private func updateFormattedTimeInput() {
+        // Update the displayed format without triggering onChange again
+        let formatted = String(format: "%d:%02d", editingMinutes, editingSeconds)
+        if timeInput != formatted {
+            timeInput = formatted
+        }
+    }
+    
+    private func finalizeTimeInput() {
+        // Ensure proper formatting when user finishes editing
+        updateFormattedTimeInput()
+        updateTimerFromInputs()
+        isEditingTime = false
+    }
+    
+    // Legacy functions kept for compatibility
     private func formatAndMoveToSeconds() {
         editingMinutes = max(0, min(999, editingMinutes))
         updateTimerFromInputs()
-        isEditingMinutes = false
-        isEditingSeconds = true
     }
     
     private func formatAndSaveSeconds() {
         editingSeconds = max(0, min(59, editingSeconds))
         updateTimerFromInputs()
-        isEditingSeconds = false
     }
     
     private func updateTimerFromInputs() {
@@ -275,8 +302,7 @@ struct DesktopTimerView: View {
         timerManager.timeRemaining = newTimeRemaining
         timerManager.sessionLength = newTimeRemaining
         
-        isEditingMinutes = false
-        isEditingSeconds = false
+        isEditingTime = false
     }
     
     var body: some View {
@@ -380,7 +406,7 @@ struct DesktopTimerView: View {
     private func toggleTimer() {
         switch timerManager.state {
         case .idle:
-            if isEditingMinutes || isEditingSeconds {
+            if isEditingTime {
                 saveTimer()
             }
             let customer = selectedCustomer.isEmpty ? nil : selectedCustomer

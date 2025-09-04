@@ -35,7 +35,7 @@ struct ProjectManagerView: View {
                 } else {
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 4) {
-                            ForEach(historyManager.preferences.projects, id: \.self) { project in
+                            ForEach(historyManager.preferences.projects.sorted(by: <), id: \.self) { project in
                                 projectRow(for: project)
                             }
                         }
@@ -96,7 +96,7 @@ struct ProjectManagerView: View {
         
         var prefs = historyManager.preferences
         prefs.projects.append(trimmedName)
-        prefs.projects.sort()
+        prefs.projects.sort(by: <)
         historyManager.updatePreferences(prefs)
         
         newProjectName = ""
@@ -131,7 +131,7 @@ struct ProjectManagerView: View {
         var prefs = historyManager.preferences
         if let index = prefs.projects.firstIndex(of: originalProject) {
             prefs.projects[index] = trimmedName
-            prefs.projects.sort()
+            prefs.projects.sort(by: <)
             
             if prefs.lastUsedProject == originalProject {
                 prefs.lastUsedProject = trimmedName

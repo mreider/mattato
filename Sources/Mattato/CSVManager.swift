@@ -121,20 +121,14 @@ class CSVManager {
     
     private func formatMonthStart(_ date: Date) -> String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "MMM-yyyy"
-        let monthYear = formatter.string(from: date)
-        return monthYear.lowercased()
+        formatter.dateFormat = "yyyy-MM"
+        return formatter.string(from: date)
     }
     
     private func formatDateTimeForCSV(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        let prefs = HistoryManager.shared.preferences
-        if prefs.exportDateFormat == "MM.DD.YYYY" {
-            formatter.dateFormat = "MM.dd.yyyy HH:mm"
-        } else {
-            formatter.dateFormat = "dd.MM.yyyy HH:mm"
-        }
-        return formatter.string(from: date)
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return isoFormatter.string(from: date)
     }
     
     private func escapeCSVField(_ field: String) -> String {

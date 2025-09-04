@@ -44,17 +44,16 @@
             backdrop-filter: blur(10px);
             border-radius: 20px;
             padding: 40px;
-            text-align: center;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
-        .header {
+        .header-section {
             text-align: center;
             margin-bottom: 40px;
         }
 
-        .header h1 {
+        .header-section h1 {
             font-size: 2.5rem;
             font-weight: 700;
             margin-bottom: 10px;
@@ -62,11 +61,6 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-        }
-
-        .header p {
-            font-size: 1.1rem;
-            color: #666;
         }
 
         .navigation {
@@ -94,6 +88,7 @@
 
         .content {
             color: #555;
+            text-align: left;
         }
 
         .section {
@@ -104,6 +99,7 @@
             color: #333;
             margin-bottom: 15px;
             font-size: 1.5rem;
+            text-align: left;
         }
 
         .section p {
@@ -167,12 +163,12 @@
 </head>
 <body>
     <div class="container">
-        <img src="../robot-timer.png" alt="Mattato Timer" class="timer-icon">
-        
-        <h1>Quick Docs</h1>
-
-        <div class="navigation">
-            <a href="../" class="nav-link">← Back</a>
+        <div class="header-section">
+            <img src="../robot-timer.png" alt="Mattato Timer" class="timer-icon">
+            <h1>Quick Docs</h1>
+            <div class="navigation">
+                <a href="../" class="nav-link">← Back</a>
+            </div>
         </div>
 
         <div class="content">

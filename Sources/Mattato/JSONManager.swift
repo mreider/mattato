@@ -128,28 +128,19 @@ class JSONManager {
     }
     
     private func serializeSessions(_ sessions: [Session]) throws -> [[String: Any]] {
-        let prefs = HistoryManager.shared.preferences
-        let dateFormatter = DateFormatter()
-        let timeFormatter = DateFormatter()
-        
-        if prefs.exportDateFormat == "MM.DD.YYYY" {
-            dateFormatter.dateFormat = "MM/dd/yyyy"
-            timeFormatter.dateFormat = "MM/dd/yyyy HH:mm:ss"
-        } else {
-            dateFormatter.dateFormat = "dd.MM.yyyy"
-            timeFormatter.dateFormat = "dd.MM.yyyy HH:mm:ss"
-        }
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         
         return sessions.map { session in
             var sessionData: [String: Any] = [:]
             
             sessionData["id"] = session.id
             sessionData["description"] = session.description
-            sessionData["start_time"] = timeFormatter.string(from: session.startTime)
-            sessionData["start_date"] = dateFormatter.string(from: session.startTime)
+            sessionData["start_time"] = isoFormatter.string(from: session.startTime)
+            sessionData["start_date"] = isoFormatter.string(from: session.startTime)
             
             if let endTime = session.endTime {
-                sessionData["end_time"] = timeFormatter.string(from: endTime)
+                sessionData["end_time"] = isoFormatter.string(from: endTime)
             }
             
             if let customer = session.customer {

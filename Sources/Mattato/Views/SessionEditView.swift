@@ -90,7 +90,7 @@ struct SessionEditView: View {
                         .frame(width: 80, alignment: .leading)
                     DatePicker("", selection: $sessionDate, displayedComponents: .date)
                         .datePickerStyle(.compact)
-                        .environment(\.locale, historyManager.preferences.exportDateFormat == "MM.DD.YYYY" ? Locale(identifier: "en_US") : Locale(identifier: "de_DE"))
+                        .environment(\.locale, Locale.current)
                         .onChange(of: sessionDate) { newDate in
                             updateDateComponents(newDate)
                         }
@@ -101,7 +101,7 @@ struct SessionEditView: View {
                         .frame(width: 80, alignment: .leading)
                     DatePicker("", selection: $startTime, displayedComponents: .hourAndMinute)
                         .datePickerStyle(.compact)
-                        .environment(\.locale, historyManager.preferences.exportDateFormat == "MM.DD.YYYY" ? Locale(identifier: "en_US") : Locale(identifier: "de_DE"))
+                        .environment(\.locale, Locale.current)
                         .onChange(of: startTime) { _ in
                             validateTimes()
                         }
@@ -112,7 +112,7 @@ struct SessionEditView: View {
                         .frame(width: 80, alignment: .leading)
                     DatePicker("", selection: $endTime, displayedComponents: .hourAndMinute)
                         .datePickerStyle(.compact)
-                        .environment(\.locale, historyManager.preferences.exportDateFormat == "MM.DD.YYYY" ? Locale(identifier: "en_US") : Locale(identifier: "de_DE"))
+                        .environment(\.locale, Locale.current)
                         .onChange(of: endTime) { _ in
                             validateTimes()
                         }
@@ -133,7 +133,7 @@ struct SessionEditView: View {
                         .frame(width: 80, alignment: .leading)
                     Picker("", selection: $selectedCustomer) {
                         Text("(none)").tag("")
-                        ForEach(historyManager.preferences.customers, id: \.self) { customer in
+                        ForEach(historyManager.preferences.customers.sorted(by: <), id: \.self) { customer in
                             Text(customer).tag(customer)
                         }
                     }
@@ -146,7 +146,7 @@ struct SessionEditView: View {
                         .frame(width: 80, alignment: .leading)
                     Picker("", selection: $selectedProject) {
                         Text("(none)").tag("")
-                        ForEach(historyManager.preferences.projects, id: \.self) { project in
+                        ForEach(historyManager.preferences.projects.sorted(by: <), id: \.self) { project in
                             Text(project).tag(project)
                         }
                     }
@@ -291,7 +291,7 @@ struct SessionEditView: View {
             
             onSave(updatedSession)
         } else {
-            let sessionId = "manual-\(Date().timeIntervalSince1970)"
+            let sessionId = historyManager.generateManualSessionId()
             let newSession = Session(
                 id: sessionId,
                 startTime: startTime,

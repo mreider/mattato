@@ -140,7 +140,7 @@ struct UserPreferences: Codable {
     var exportCustomFromDate: Date = Calendar.current.date(byAdding: .weekOfYear, value: -2, to: Date()) ?? Date()
     var exportCustomToDate: Date = Date()
     var exportTitle: String = "Mattato Sessions"
-    var exportDateFormat: String = "DD.MM.YYYY" // "DD.MM.YYYY" (EU), "MM.DD.YYYY" (US)
+    // Removed exportDateFormat - now using ISO 8601 standard for all exports
     var dbExportFolderPath: String = ""
     
     // New consolidated export settings
@@ -182,7 +182,7 @@ struct UserPreferences: Codable {
         exportCustomFromDate = try container.decodeIfPresent(Date.self, forKey: .exportCustomFromDate) ?? (Calendar.current.date(byAdding: .weekOfYear, value: -2, to: Date()) ?? Date())
         exportCustomToDate = try container.decodeIfPresent(Date.self, forKey: .exportCustomToDate) ?? Date()
         exportTitle = try container.decodeIfPresent(String.self, forKey: .exportTitle) ?? "Mattato Sessions"
-        exportDateFormat = try container.decodeIfPresent(String.self, forKey: .exportDateFormat) ?? "DD.MM.YYYY"
+        // exportDateFormat removed - using ISO 8601 standard
         dbExportFolderPath = try container.decodeIfPresent(String.self, forKey: .dbExportFolderPath) ?? ""
         
         // New consolidated export settings

@@ -35,7 +35,7 @@ struct CustomerManagerView: View {
                 } else {
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 4) {
-                            ForEach(historyManager.preferences.customers, id: \.self) { customer in
+                            ForEach(historyManager.preferences.customers.sorted(by: <), id: \.self) { customer in
                                 customerRow(for: customer)
                             }
                         }
@@ -96,7 +96,7 @@ struct CustomerManagerView: View {
         
         var prefs = historyManager.preferences
         prefs.customers.append(trimmedName)
-        prefs.customers.sort()
+        prefs.customers.sort(by: <)
         historyManager.updatePreferences(prefs)
         
         newCustomerName = ""
@@ -131,7 +131,7 @@ struct CustomerManagerView: View {
         var prefs = historyManager.preferences
         if let index = prefs.customers.firstIndex(of: originalCustomer) {
             prefs.customers[index] = trimmedName
-            prefs.customers.sort()
+            prefs.customers.sort(by: <)
             
             if prefs.lastUsedCustomer == originalCustomer {
                 prefs.lastUsedCustomer = trimmedName

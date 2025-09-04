@@ -170,9 +170,8 @@ END:VEVENT
     
     private func formatMonthStart(_ date: Date) -> String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "MMM-yyyy"
-        let monthYear = formatter.string(from: date)
-        return monthYear.lowercased()
+        formatter.dateFormat = "yyyy-MM"
+        return formatter.string(from: date)
     }
     
     private func getExportDirectory() -> URL {

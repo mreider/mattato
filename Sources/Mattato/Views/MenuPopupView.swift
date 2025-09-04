@@ -78,7 +78,7 @@ struct MenuPopupView: View {
                 
                 Picker("", selection: $selectedCustomer) {
                     Text("(none)").tag("")
-                    ForEach(historyManager.preferences.customers, id: \.self) { customer in
+                    ForEach(historyManager.preferences.customers.sorted(by: <), id: \.self) { customer in
                         Text(customer).tag(customer)
                     }
                 }
@@ -104,7 +104,7 @@ struct MenuPopupView: View {
                 
                 Picker("", selection: $selectedProject) {
                     Text("(none)").tag("")
-                    ForEach(historyManager.preferences.projects, id: \.self) { project in
+                    ForEach(historyManager.preferences.projects.sorted(by: <), id: \.self) { project in
                         Text(project).tag(project)
                     }
                 }

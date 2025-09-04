@@ -302,7 +302,18 @@ class HistoryManager: ObservableObject {
         guard let data = try? Data(contentsOf: sessionsURL) else { return }
         
         do {
-            sessions = try JSONDecoder().decode([Session].self, from: data)
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .custom { decoder in
+                let container = try decoder.singleValueContainer()
+                let dateString = try container.decode(String.self)
+                
+                if let date = self.parseDateFromString(dateString) {
+                    return date
+                }
+                
+                throw DecodingError.dataCorruptedError(in: container, debugDescription: "Could not parse ISO 8601 date: \(dateString)")
+            }
+            sessions = try decoder.decode([Session].self, from: data)
         } catch {
             print("Error loading sessions: \(error)")
         }
@@ -310,7 +321,15 @@ class HistoryManager: ObservableObject {
     
     private func saveSessions() {
         do {
-            let data = try JSONEncoder().encode(sessions)
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .custom { date, encoder in
+                let isoFormatter = ISO8601DateFormatter()
+                isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                let dateString = isoFormatter.string(from: date)
+                var container = encoder.singleValueContainer()
+                try container.encode(dateString)
+            }
+            let data = try encoder.encode(sessions)
             try data.write(to: sessionsURL)
         } catch {
             print("Error saving sessions: \(error)")
@@ -327,7 +346,15 @@ private func saveSessionsAsync() {
     
     fileQueue.async { [sessionsURL] in
         do {
-            let data = try JSONEncoder().encode(currentSessions)
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .custom { date, encoder in
+                let isoFormatter = ISO8601DateFormatter()
+                isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                let dateString = isoFormatter.string(from: date)
+                var container = encoder.singleValueContainer()
+                try container.encode(dateString)
+            }
+            let data = try encoder.encode(currentSessions)
             try data.write(to: sessionsURL)
         } catch {
             print("Error saving sessions asynchronously: \(error)")
@@ -344,7 +371,18 @@ private func saveSessionsAsync() {
         guard let data = try? Data(contentsOf: preferencesURL) else { return }
         
         do {
-            preferences = try JSONDecoder().decode(UserPreferences.self, from: data)
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .custom { decoder in
+                let container = try decoder.singleValueContainer()
+                let dateString = try container.decode(String.self)
+                
+                if let date = self.parseDateFromString(dateString) {
+                    return date
+                }
+                
+                throw DecodingError.dataCorruptedError(in: container, debugDescription: "Could not parse ISO 8601 date: \(dateString)")
+            }
+            preferences = try decoder.decode(UserPreferences.self, from: data)
         } catch {
             print("Error loading preferences: \(error)")
         }
@@ -352,7 +390,15 @@ private func saveSessionsAsync() {
     
     private func savePreferences() {
         do {
-            let data = try JSONEncoder().encode(preferences)
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .custom { date, encoder in
+                let isoFormatter = ISO8601DateFormatter()
+                isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                let dateString = isoFormatter.string(from: date)
+                var container = encoder.singleValueContainer()
+                try container.encode(dateString)
+            }
+            let data = try encoder.encode(preferences)
             try data.write(to: preferencesURL)
         } catch {
             print("Error saving preferences: \(error)")
@@ -816,6 +862,12 @@ private func saveSessionsAsync() {
     }
     
     private func parseTimeString(_ timeString: String) -> Date? {
+        // First try the comprehensive date parser
+        if let fullDate = parseDateFromString(timeString) {
+            return fullDate
+        }
+        
+        // Fallback for time-only strings (legacy format)
         let formatter = DateFormatter()
         formatter.timeStyle = .short
         formatter.dateStyle = .none
@@ -1051,7 +1103,15 @@ private func saveSessionsAsync() {
         let tempURL = sessionsURL.appendingPathExtension("tmp")
         
         do {
-            let data = try JSONEncoder().encode(sessions)
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .custom { date, encoder in
+                let isoFormatter = ISO8601DateFormatter()
+                isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                let dateString = isoFormatter.string(from: date)
+                var container = encoder.singleValueContainer()
+                try container.encode(dateString)
+            }
+            let data = try encoder.encode(sessions)
             try data.write(to: tempURL)
             
             _ = tempURL.startAccessingSecurityScopedResource()
@@ -1072,43 +1132,67 @@ private func saveSessionsAsync() {
         return "manual-\(Date().timeIntervalSince1970)-\(UUID().uuidString.prefix(8))"
     }
     
+    // MARK: - Date Parsing Helpers
+    
+    func parseDateFromString(_ dateString: String) -> Date? {
+        // Try ISO 8601 format first (new standard)
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let isoDate = isoFormatter.date(from: dateString) {
+            return isoDate
+        }
+        
+        // Fallback to ISO without fractional seconds
+        isoFormatter.formatOptions = [.withInternetDateTime]
+        if let isoDate = isoFormatter.date(from: dateString) {
+            return isoDate
+        }
+        
+        // Legacy format support for existing data
+        let legacyFormats = [
+            "dd.MM.yyyy HH:mm:ss",  // European with time
+            "MM/dd/yyyy HH:mm:ss",  // US with time  
+            "dd.MM.yyyy",           // European date only
+            "MM/dd/yyyy",           // US date only
+            "yyyy-MM-dd HH:mm:ss",  // ISO-like format
+            "yyyy-MM-dd",           // ISO date only
+        ]
+        
+        for formatString in legacyFormats {
+            let formatter = DateFormatter()
+            formatter.dateFormat = formatString
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            if let date = formatter.date(from: dateString) {
+                return date
+            }
+        }
+        
+        return nil
+    }
+    
     // MARK: - Date Formatting Helpers
     
     func formatDateForExport(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        if preferences.exportDateFormat == "MM.DD.YYYY" {
-            formatter.dateFormat = "MM.dd.yyyy"
-        } else {
-            formatter.dateFormat = "dd.MM.yyyy"
-        }
-        return formatter.string(from: date)
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return isoFormatter.string(from: date)
     }
     
     func formatDateForFilename(_ date: Date, isMonth: Bool = false) -> String {
         let formatter = DateFormatter()
         if isMonth {
-            formatter.dateFormat = "MMM-yyyy"
-            let monthYear = formatter.string(from: date)
-            return monthYear.lowercased()
+            formatter.dateFormat = "yyyy-MM"
+            return formatter.string(from: date)
         } else {
-            if preferences.exportDateFormat == "MM.DD.YYYY" {
-                formatter.dateFormat = "yyyy-MM-dd"
-            } else {
-                formatter.dateFormat = "yyyy-MM-dd"
-            }
+            formatter.dateFormat = "yyyy-MM-dd"
             return formatter.string(from: date)
         }
     }
     
     func formatDateForDisplay(_ date: Date) -> String {
         let formatter = DateFormatter()
-        if preferences.exportDateFormat == "MM.DD.YYYY" {
-            formatter.dateStyle = .medium
-            formatter.locale = Locale(identifier: "en_US")
-        } else {
-            formatter.dateStyle = .medium
-            formatter.locale = Locale(identifier: "de_DE")
-        }
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
         return formatter.string(from: date)
     }
     
@@ -1178,7 +1262,15 @@ private func saveSessionsAsync() {
         )
         
         do {
-            let data = try JSONEncoder().encode(exportData)
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .custom { date, encoder in
+                let isoFormatter = ISO8601DateFormatter()
+                isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                let dateString = isoFormatter.string(from: date)
+                var container = encoder.singleValueContainer()
+                try container.encode(dateString)
+            }
+            let data = try encoder.encode(exportData)
             try data.write(to: exportURL)
             return (true, exportURL, nil)
         } catch {
@@ -1189,7 +1281,18 @@ private func saveSessionsAsync() {
     func importDatabase(from url: URL) -> (success: Bool, error: String?) {
         do {
             let data = try Data(contentsOf: url)
-            let importData = try JSONDecoder().decode(DatabaseExport.self, from: data)
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .custom { decoder in
+                let container = try decoder.singleValueContainer()
+                let dateString = try container.decode(String.self)
+                
+                if let date = self.parseDateFromString(dateString) {
+                    return date
+                }
+                
+                throw DecodingError.dataCorruptedError(in: container, debugDescription: "Could not parse ISO 8601 date: \(dateString)")
+            }
+            let importData = try decoder.decode(DatabaseExport.self, from: data)
             
             // Replace all data
             sessions = importData.sessions

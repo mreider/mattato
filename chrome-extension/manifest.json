@@ -30,5 +30,11 @@
   "action": {
     "default_popup": "popup.html",
     "default_title": "Mattato TimeCockpit Bridge"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["direct-import.js"],
+      "matches": ["https://*.timecockpit.com/*"]
+    }
+  ]
 }
