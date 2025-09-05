@@ -11,7 +11,7 @@ struct SessionHistoryView: View {
     @State private var selectedSessions: Set<String> = []
     @State private var selectAll: Bool = false
     @State private var showExportSettings: Bool = false
-    @State private var showRoundingSettings: Bool = false
+    @State private var showBulkEditSettings: Bool = false
     
     // Export settings state
     @State private var selectedExportFormat: String = "Markdown"
@@ -22,9 +22,61 @@ struct SessionHistoryView: View {
     @State private var customToDate: Date = Date()
     @State private var exportTitle: String = "Mattato Sessions"
     
-    // Rounding settings state
+    // Bulk edit settings state
     @State private var roundingTarget: String = "All" // "All" or "Selected"
     @State private var roundingInterval: String = "quarter" // "quarter", "half", "exact"
+    
+    // Inject sessions settings state
+    @State private var injectFromTime: Date = {
+        let calendar = Calendar.current
+        var components = DateComponents()
+        components.hour = 8
+        components.minute = 0
+        return calendar.date(from: components) ?? Date()
+    }()
+    @State private var injectToTime: Date = {
+        let calendar = Calendar.current
+        var components = DateComponents()
+        components.hour = 17
+        components.minute = 0
+        return calendar.date(from: components) ?? Date()
+    }()
+    @State private var injectProject: String = "(none)"
+    @State private var injectCustomer: String = "(none)"
+    @State private var injectFromDate: Date = {
+        let calendar = Calendar.current
+        return calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
+    }()
+    @State private var injectToDate: Date = {
+        let calendar = Calendar.current
+        let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
+        return calendar.date(byAdding: .day, value: 6, to: startOfWeek) ?? Date()
+    }()
+    
+    // Destroy sessions settings state
+    @State private var destroyFromTime: Date = {
+        let calendar = Calendar.current
+        var components = DateComponents()
+        components.hour = 8
+        components.minute = 0
+        return calendar.date(from: components) ?? Date()
+    }()
+    @State private var destroyToTime: Date = {
+        let calendar = Calendar.current
+        var components = DateComponents()
+        components.hour = 17
+        components.minute = 0
+        return calendar.date(from: components) ?? Date()
+    }()
+    @State private var destroyFromDate: Date = {
+        let calendar = Calendar.current
+        return calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
+    }()
+    @State private var destroyToDate: Date = {
+        let calendar = Calendar.current
+        let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
+        return calendar.date(byAdding: .day, value: 6, to: startOfWeek) ?? Date()
+    }()
     
     enum SortOrder: String, CaseIterable {
         case dateDescending = "Date (Recent First)"
@@ -304,14 +356,14 @@ struct SessionHistoryView: View {
         .padding(.bottom, 4)
     }
     
-    private var roundingSettingsViewCollapsed: some View {
+    private var bulkEditSettingsViewCollapsed: some View {
         VStack(alignment: .leading, spacing: 8) {
             Button(action: {
-                showRoundingSettings.toggle()
+                showBulkEditSettings.toggle()
             }) {
                 HStack {
-                    Image(systemName: showRoundingSettings ? "chevron.down" : "chevron.right")
-                    Text("Round and Flatten")
+                    Image(systemName: showBulkEditSettings ? "chevron.down" : "chevron.right")
+                    Text("Bulk Edit")
                         .font(.headline)
                         .fontWeight(.medium)
                     Spacer()
@@ -320,36 +372,157 @@ struct SessionHistoryView: View {
             .buttonStyle(.plain)
             .foregroundColor(.primary)
             
-            if showRoundingSettings {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(alignment: .center, spacing: 8) {
-                        Text("Round")
+            if showBulkEditSettings {
+                VStack(alignment: .leading, spacing: 16) {
+                    // Round and Flatten section
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Round and Flatten")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
                         
-                        Picker("", selection: $roundingTarget) {
-                            Text("All").tag("All")
-                            Text("Selected").tag("Selected")
+                        HStack(alignment: .center, spacing: 8) {
+                            Text("Round")
+                            
+                            Picker("", selection: $roundingTarget) {
+                                Text("All").tag("All")
+                                Text("Selected").tag("Selected")
+                            }
+                            .pickerStyle(.menu)
+                            .frame(width: 80)
+                            .disabled(roundingTarget == "Selected" && selectedSessions.isEmpty)
+                            
+                            Text("Sessions to nearest")
+                            
+                            Picker("", selection: $roundingInterval) {
+                                Text("quarter").tag("quarter")
+                                Text("half").tag("half")
+                                Text("exact").tag("exact")
+                            }
+                            .pickerStyle(.menu)
+                            .frame(width: 80)
+                            
+                            Text("hour")
+                            
+                            Button("Go") {
+                                executeRounding()
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(!isRoundingReady)
                         }
-                        .pickerStyle(.menu)
-                        .frame(width: 80)
-                        .disabled(roundingTarget == "Selected" && selectedSessions.isEmpty)
+                    }
+                    
+                    Divider()
+                    
+                    // Inject Sessions section
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Inject Sessions")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
                         
-                        Text("Sessions to nearest")
-                        
-                        Picker("", selection: $roundingInterval) {
-                            Text("quarter").tag("quarter")
-                            Text("half").tag("half")
-                            Text("exact").tag("exact")
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(alignment: .center, spacing: 8) {
+                                Text("Inject sessions from")
+                                
+                                DatePicker("", selection: $injectFromTime, displayedComponents: .hourAndMinute)
+                                    .frame(width: 80)
+                                
+                                Text("to")
+                                
+                                DatePicker("", selection: $injectToTime, displayedComponents: .hourAndMinute)
+                                    .frame(width: 80)
+                                
+                                Text("with")
+                                
+                                Picker("", selection: $injectProject) {
+                                    Text("(none)").tag("(none)")
+                                    ForEach(historyManager.preferences.projects.sorted(by: <), id: \.self) { project in
+                                        Text(formatProjectDisplayText(project: project)).tag(project)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                                .frame(width: 140)
+                                
+                                Text("and")
+                                
+                                Picker("", selection: $injectCustomer) {
+                                    Text("(none)").tag("(none)")
+                                    ForEach(historyManager.preferences.customers.sorted(by: <), id: \.self) { customer in
+                                        Text(customer).tag(customer)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                                .frame(width: 120)
+                            }
+                            
+                            HStack(alignment: .center, spacing: 8) {
+                                Text("for days between")
+                                
+                                DatePicker("", selection: $injectFromDate, displayedComponents: .date)
+                                    .frame(width: 120)
+                                
+                                Text("and")
+                                
+                                DatePicker("", selection: $injectToDate, displayedComponents: .date)
+                                    .frame(width: 120)
+                                
+                                Spacer()
+                                
+                                Button("Go") {
+                                    executeInjectSessions()
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .disabled(!isInjectSessionsReady)
+                            }
+                            
+                            Text("Note: No existing sessions will be removed, only open times will be filled.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
-                        .pickerStyle(.menu)
-                        .frame(width: 80)
+                    }
+                    
+                    Divider()
+                    
+                    // Destroy Sessions section
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Destroy Sessions")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
                         
-                        Text("hour")
-                        
-                        Button("Go") {
-                            executeRounding()
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(alignment: .center, spacing: 8) {
+                                Text("Destroy sessions between")
+                                
+                                DatePicker("", selection: $destroyFromTime, displayedComponents: .hourAndMinute)
+                                    .frame(width: 80)
+                                
+                                Text("and")
+                                
+                                DatePicker("", selection: $destroyToTime, displayedComponents: .hourAndMinute)
+                                    .frame(width: 80)
+                                
+                                Spacer()
+                            }
+                            
+                            HStack(alignment: .center, spacing: 8) {
+                                Text("for days between")
+                                
+                                DatePicker("", selection: $destroyFromDate, displayedComponents: .date)
+                                    .frame(width: 120)
+                                
+                                Text("and")
+                                
+                                DatePicker("", selection: $destroyToDate, displayedComponents: .date)
+                                    .frame(width: 120)
+                                
+                                Spacer()
+                                
+                                Button("Go") {
+                                    executeDestroySessions()
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .disabled(!isDestroySessionsReady)
+                            }
                         }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(!isRoundingReady)
                     }
                 }
                 .padding(.leading, 20)
@@ -541,7 +714,7 @@ struct SessionHistoryView: View {
             
             exportSettingsViewCollapsed
             
-            roundingSettingsViewCollapsed
+            bulkEditSettingsViewCollapsed
         }
     }
     
@@ -595,6 +768,21 @@ struct SessionHistoryView: View {
             return !selectedSessions.isEmpty
         }
         return !historyManager.sessions.isEmpty
+    }
+    
+    private var isInjectSessionsReady: Bool {
+        let validTimeRange = injectFromTime < injectToTime
+        let validSelections = !injectProject.isEmpty && !injectCustomer.isEmpty
+        let validDateRange = injectFromDate < injectToDate
+        
+        return validTimeRange && validSelections && validDateRange
+    }
+    
+    private var isDestroySessionsReady: Bool {
+        let validTimeRange = destroyFromTime < destroyToTime
+        let validDateRange = destroyFromDate < destroyToDate
+        
+        return validTimeRange && validDateRange
     }
     
     private var exportDirectoryDisplay: String {
@@ -769,7 +957,7 @@ struct SessionHistoryView: View {
         let targetText = target.lowercased()
         
         alert.messageText = "Round and Flatten Sessions"
-        alert.informativeText = "Warning: this will round \(targetText) \(sessionCount) session\(sessionCount == 1 ? "" : "s") to the nearest \(minutes) minutes so that your sessions fit nicely into a schedule. If multiple sessions round to the same time period, the LONGER session will be kept and shorter ones will be deleted. Are you sure you want to do this?"
+        alert.informativeText = "Warning: this will round \(targetText) \(sessionCount) session\(sessionCount == 1 ? "" : "s") to \(minutes)-minute time chunks based on when they started. Sessions will expand or contract to fill entire time chunks. If multiple sessions fall into the same time chunk, the SECOND session will be kept and earlier ones will be deleted. Are you sure you want to do this?"
         alert.alertStyle = .warning
         alert.addButton(withTitle: "Cancel")
         alert.addButton(withTitle: "Round and Flatten")
@@ -801,7 +989,7 @@ struct SessionHistoryView: View {
         
         let completionAlert = NSAlert()
         completionAlert.messageText = "Round and Flatten Complete"
-        completionAlert.informativeText = "Sessions have been rounded to the nearest \(minutes) minutes. \(deletedCount) shorter sessions were removed due to conflicts."
+        completionAlert.informativeText = "Sessions have been rounded to \(minutes)-minute time chunks. \(deletedCount) sessions were removed due to conflicts."
         completionAlert.alertStyle = .informational
         completionAlert.addButton(withTitle: "OK")
         completionAlert.runModal()
@@ -824,7 +1012,7 @@ struct SessionHistoryView: View {
         
         let completionAlert = NSAlert()
         completionAlert.messageText = "Round and Flatten Complete"
-        completionAlert.informativeText = "\(sessionsToRound.count) sessions were processed. \(deletedCount) shorter sessions were removed due to conflicts."
+        completionAlert.informativeText = "\(sessionsToRound.count) sessions were processed. \(deletedCount) sessions were removed due to conflicts."
         completionAlert.alertStyle = .informational
         completionAlert.addButton(withTitle: "OK")
         completionAlert.runModal()
@@ -835,63 +1023,264 @@ struct SessionHistoryView: View {
     
     private func roundAndFlattenSessions(_ sessions: [Session], roundingInterval: TimeInterval) -> ([Session], Int) {
         var roundedSessions: [Session] = []
-        var conflictGroups: [String: [Session]] = [:]
+        var conflictGroups: [String: [(Session, Date)]] = [:]
         
-        // Round each session and group by time period
+        // Round each session to expand/contract into time chunks
         for session in sessions {
             var updatedSession = session
             
-            let startTimeInterval = session.startTime.timeIntervalSince1970
-            let roundedStartInterval = round(startTimeInterval / roundingInterval) * roundingInterval
-            updatedSession.startTime = Date(timeIntervalSince1970: roundedStartInterval)
+            // Store original start time for sorting later
+            let originalStartTime = session.startTime
             
-            if let endTime = session.endTime {
-                let endTimeInterval = endTime.timeIntervalSince1970
-                let roundedEndInterval = round(endTimeInterval / roundingInterval) * roundingInterval
-                updatedSession.endTime = Date(timeIntervalSince1970: roundedEndInterval)
-                updatedSession.plannedDuration = updatedSession.endTime!.timeIntervalSince(updatedSession.startTime)
-            }
+            // Determine which time chunk the session STARTED in
+            let startTimeInterval = session.startTime.timeIntervalSince1970
+            let chunkStart = floor(startTimeInterval / roundingInterval) * roundingInterval
+            let chunkEnd = chunkStart + roundingInterval
+            
+            // Expand session to fill the entire time chunk
+            updatedSession.startTime = Date(timeIntervalSince1970: chunkStart)
+            updatedSession.endTime = Date(timeIntervalSince1970: chunkEnd)
+            updatedSession.plannedDuration = roundingInterval
             
             updatedSession.markAsEdited()
             
-            // Create a key based on rounded start and end times
-            let startKey = Int(roundedStartInterval)
-            let endKey = updatedSession.endTime != nil ? Int(updatedSession.endTime!.timeIntervalSince1970) : startKey
-            let timeKey = "\(startKey)-\(endKey)"
+            // Group by time chunk, storing both session and original start time
+            let timeKey = "\(Int(chunkStart))"
             
             if conflictGroups[timeKey] == nil {
                 conflictGroups[timeKey] = []
             }
-            conflictGroups[timeKey]!.append(updatedSession)
+            conflictGroups[timeKey]!.append((updatedSession, originalStartTime))
         }
         
         var deletedCount = 0
         
-        // For each time period, keep only the longest session
-        for (_, conflictingSessions) in conflictGroups {
-            if conflictingSessions.count == 1 {
-                roundedSessions.append(conflictingSessions[0])
+        // For each time chunk, resolve conflicts by keeping the SECOND session
+        for (_, conflictingSessionData) in conflictGroups {
+            if conflictingSessionData.count == 1 {
+                roundedSessions.append(conflictingSessionData[0].0)
             } else {
-                // Find the session with the longest actual duration
-                let longestSession = conflictingSessions.max { session1, session2 in
-                    let duration1 = session1.actualDuration ?? session1.plannedDuration
-                    let duration2 = session2.actualDuration ?? session2.plannedDuration
-                    return duration1 < duration2
-                }
+                // Sort by original start time to determine order
+                let sortedSessionData = conflictingSessionData.sorted { $0.1 < $1.1 }
                 
-                if let longest = longestSession {
-                    // Merge descriptions from all sessions
-                    let descriptions = conflictingSessions.map { $0.description }.joined(separator: " + ")
-                    var mergedSession = longest
-                    mergedSession.description = descriptions
-                    roundedSessions.append(mergedSession)
-                }
+                // Keep the SECOND session (index 1), clobbering the first
+                let sessionDataToKeep = sortedSessionData.count > 1 ? sortedSessionData[1] : sortedSessionData[0]
                 
-                deletedCount += conflictingSessions.count - 1
+                // Merge descriptions from all sessions
+                let descriptions = sortedSessionData.map { $0.0.description }.joined(separator: " + ")
+                var mergedSession = sessionDataToKeep.0
+                mergedSession.description = descriptions
+                
+                roundedSessions.append(mergedSession)
+                deletedCount += conflictingSessionData.count - 1
             }
         }
         
         return (roundedSessions, deletedCount)
+    }
+    
+    private func executeInjectSessions() {
+        showInjectSessionsWarning()
+    }
+    
+    private func showInjectSessionsWarning() {
+        let alert = NSAlert()
+        let calendar = Calendar.current
+        let fromDate = calendar.startOfDay(for: injectFromDate)
+        let toDate = calendar.startOfDay(for: injectToDate)
+        
+        let filteredSessions = historyManager.sessions.filter { session in
+            let sessionDay = calendar.startOfDay(for: session.startTime)
+            return sessionDay >= fromDate && sessionDay <= toDate
+        }
+        let uniqueDays = Set(filteredSessions.map { calendar.startOfDay(for: $0.startTime) }).count
+        
+        alert.messageText = "Inject Gap Sessions"
+        let projectText = injectProject == "(none)" ? "no project" : "project '\(injectProject)'"
+        let customerText = injectCustomer == "(none)" ? "no customer" : "customer '\(injectCustomer)'"
+        alert.informativeText = "This will analyze \(uniqueDays) day\(uniqueDays == 1 ? "" : "s") of sessions in the selected date range and inject new sessions to fill any gaps between \(formatTime(injectFromTime)) and \(formatTime(injectToTime)) each day. New sessions will use \(projectText) and \(customerText). Are you sure you want to do this?"
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: "Inject Sessions")
+        
+        let response = alert.runModal()
+        if response == .alertSecondButtonReturn {
+            performInjectSessions()
+        }
+    }
+    
+    private func performInjectSessions() {
+        let calendar = Calendar.current
+        let fromDate = calendar.startOfDay(for: injectFromDate)
+        let toDate = calendar.startOfDay(for: injectToDate)
+        
+        // Filter sessions to only those in the selected date range
+        let sessions = historyManager.sessions.filter { session in
+            let sessionDay = calendar.startOfDay(for: session.startTime)
+            return sessionDay >= fromDate && sessionDay <= toDate
+        }
+        
+        // Group sessions by day
+        var sessionsByDay: [Date: [Session]] = [:]
+        for session in sessions {
+            let dayStart = calendar.startOfDay(for: session.startTime)
+            if sessionsByDay[dayStart] == nil {
+                sessionsByDay[dayStart] = []
+            }
+            sessionsByDay[dayStart]!.append(session)
+        }
+        
+        // Also create empty entries for days in range that have no sessions
+        var currentDay = fromDate
+        while currentDay <= toDate {
+            if sessionsByDay[currentDay] == nil {
+                sessionsByDay[currentDay] = []
+            }
+            currentDay = calendar.date(byAdding: .day, value: 1, to: currentDay) ?? currentDay
+        }
+        
+        var injectedCount = 0
+        
+        // Process each day
+        for (dayStart, daySessions) in sessionsByDay {
+            // Create time range for this day
+            let fromTime = calendar.date(bySettingHour: calendar.component(.hour, from: injectFromTime),
+                                       minute: calendar.component(.minute, from: injectFromTime),
+                                       second: 0,
+                                       of: dayStart) ?? dayStart
+            let toTime = calendar.date(bySettingHour: calendar.component(.hour, from: injectToTime),
+                                     minute: calendar.component(.minute, from: injectToTime),
+                                     second: 0,
+                                     of: dayStart) ?? dayStart
+            
+            // Sort sessions by start time
+            let sortedSessions = daySessions.sorted { $0.startTime < $1.startTime }
+            
+            // Find gaps and inject sessions
+            var currentTime = fromTime
+            
+            for session in sortedSessions {
+                // If there's a gap before this session, fill it
+                if session.startTime > currentTime && currentTime < toTime {
+                    let gapEnd = min(session.startTime, toTime)
+                    let gapSession = createGapSession(from: currentTime, to: gapEnd)
+                    historyManager.addSession(gapSession)
+                    injectedCount += 1
+                }
+                
+                // Update current time to end of this session (or its start time if no end time)
+                if let endTime = session.endTime {
+                    currentTime = max(currentTime, endTime)
+                } else {
+                    currentTime = max(currentTime, session.startTime.addingTimeInterval(session.plannedDuration))
+                }
+            }
+            
+            // Fill any remaining gap at the end of the day
+            if currentTime < toTime {
+                let gapSession = createGapSession(from: currentTime, to: toTime)
+                historyManager.addSession(gapSession)
+                injectedCount += 1
+            }
+        }
+        
+        // Show completion message
+        let completionAlert = NSAlert()
+        completionAlert.messageText = "Inject Sessions Complete"
+        completionAlert.informativeText = "\(injectedCount) gap sessions were injected across \(sessionsByDay.count) day\(sessionsByDay.count == 1 ? "" : "s")."
+        completionAlert.alertStyle = .informational
+        completionAlert.addButton(withTitle: "OK")
+        completionAlert.runModal()
+    }
+    
+    private func createGapSession(from startTime: Date, to endTime: Date) -> Session {
+        let description = "Gap session (\(formatTime(startTime)) - \(formatTime(endTime)))"
+        let customer = injectCustomer == "(none)" ? nil : injectCustomer
+        let project = injectProject == "(none)" ? nil : injectProject
+        
+        return Session(
+            id: UUID().uuidString,
+            startTime: startTime,
+            endTime: endTime,
+            description: description,
+            customer: customer,
+            project: project
+        )
+    }
+    
+    private func formatTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+    
+    private func executeDestroySessions() {
+        showDestroySessionsWarning()
+    }
+    
+    private func showDestroySessionsWarning() {
+        let alert = NSAlert()
+        let calendar = Calendar.current
+        let fromDate = calendar.startOfDay(for: destroyFromDate)
+        let toDate = calendar.startOfDay(for: destroyToDate)
+        
+        let sessionsToDelete = historyManager.sessions.filter { session in
+            let sessionDay = calendar.startOfDay(for: session.startTime)
+            guard sessionDay >= fromDate && sessionDay <= toDate else { return false }
+            
+            // Check if session overlaps with the time range
+            let sessionStartTime = calendar.dateComponents([.hour, .minute], from: session.startTime)
+            let sessionEndTime: DateComponents
+            if let endTime = session.endTime {
+                sessionEndTime = calendar.dateComponents([.hour, .minute], from: endTime)
+            } else {
+                let calculatedEndTime = session.startTime.addingTimeInterval(session.plannedDuration)
+                sessionEndTime = calendar.dateComponents([.hour, .minute], from: calculatedEndTime)
+            }
+            
+            let destroyStartTime = calendar.dateComponents([.hour, .minute], from: destroyFromTime)
+            let destroyEndTime = calendar.dateComponents([.hour, .minute], from: destroyToTime)
+            
+            // Convert to minutes for easier comparison
+            let sessionStartMinutes = (sessionStartTime.hour ?? 0) * 60 + (sessionStartTime.minute ?? 0)
+            let sessionEndMinutes = (sessionEndTime.hour ?? 0) * 60 + (sessionEndTime.minute ?? 0)
+            let destroyStartMinutes = (destroyStartTime.hour ?? 0) * 60 + (destroyStartTime.minute ?? 0)
+            let destroyEndMinutes = (destroyEndTime.hour ?? 0) * 60 + (destroyEndTime.minute ?? 0)
+            
+            // Check for overlap
+            return sessionStartMinutes < destroyEndMinutes && sessionEndMinutes > destroyStartMinutes
+        }
+        
+        alert.messageText = "Destroy Sessions"
+        alert.informativeText = "This will permanently delete \(sessionsToDelete.count) session\(sessionsToDelete.count == 1 ? "" : "s") that overlap with the time range \(formatTime(destroyFromTime)) to \(formatTime(destroyToTime)) between \(formatDate(destroyFromDate)) and \(formatDate(destroyToDate)). This action cannot be undone. Are you sure you want to do this?"
+        alert.alertStyle = .critical
+        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: "Delete Sessions")
+        
+        let response = alert.runModal()
+        if response == .alertSecondButtonReturn {
+            performDestroySessions(sessionsToDelete)
+        }
+    }
+    
+    private func performDestroySessions(_ sessionsToDelete: [Session]) {
+        for session in sessionsToDelete {
+            historyManager.deleteSession(session.id)
+        }
+        
+        // Show completion message
+        let completionAlert = NSAlert()
+        completionAlert.messageText = "Destroy Sessions Complete"
+        completionAlert.informativeText = "\(sessionsToDelete.count) session\(sessionsToDelete.count == 1 ? "" : "s") \(sessionsToDelete.count == 1 ? "was" : "were") deleted."
+        completionAlert.alertStyle = .informational
+        completionAlert.addButton(withTitle: "OK")
+        completionAlert.runModal()
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        return formatter.string(from: date)
     }
     
 }

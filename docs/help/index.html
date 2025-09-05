@@ -221,7 +221,7 @@
 
             <div class="section" id="sessions-exporting">
                 <h2>Sessions & Exporting</h2>
-                <img src="session-view-export-rounding.png" alt="Session view with export and rounding options" >
+                <img src="session-view-export-bulk-edit.png" alt="Session view with export and bulk edit options" >
                 
                 <h3>Export Options</h3>
                 <ul>
@@ -232,11 +232,11 @@
                     <li><strong>JSON</strong> - Structured data format for APIs and integrations</li>
                 </ul>
 
-                <h3>Round and Flatten</h3>
+                <h3>Bulk Edit</h3>
                 <ul>
-                    <li><strong>Purpose</strong> - Rounds session times to nearest interval (15min, 30min, 1hr)</li>
-                    <li><strong>Conflict resolution</strong> - When sessions overlap after rounding, keeps the longer session</li>
-                    <li><strong>Flattening</strong> - Merges overlapping sessions, combining descriptions</li>
+                    <li><strong>Round and Flatten</strong> - Expands sessions to fill time chunks (15min/30min/1hr). Sessions get rounded to the chunk they started in. When multiple sessions fall in same chunk, keeps the second one.</li>
+                    <li><strong>Inject Sessions</strong> - Fills gaps between work hours with new sessions. Useful for creating complete timesheets.</li>
+                    <li><strong>Destroy Sessions</strong> - Deletes all sessions within specified time ranges. Permanently removes overlapping sessions.</li>
                 </ul>
             </div>
 
