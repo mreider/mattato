@@ -147,7 +147,7 @@ struct SessionEditView: View {
                     Picker("", selection: $selectedProject) {
                         Text("(none)").tag("")
                         ForEach(historyManager.preferences.projects.sorted(by: <), id: \.self) { project in
-                            Text(project).tag(project)
+                            Text(formatProjectDisplayText(project: project)).tag(project)
                         }
                     }
                     .pickerStyle(.menu)
@@ -201,6 +201,18 @@ struct SessionEditView: View {
         .onAppear {
             validateTimes()
         }
+    }
+    
+    private func formatProjectDisplayText(project: String) -> String {
+        let detail = historyManager.preferences.projectDetails[project] ?? ""
+        if detail.isEmpty {
+            return project
+        }
+        
+        let maxDetailLength = 35
+        let truncatedDetail = detail.count > maxDetailLength ? String(detail.prefix(maxDetailLength)) + ".." : detail
+        
+        return "\(project) — \(truncatedDetail)"
     }
     
     private func updateDateComponents(_ newDate: Date) {

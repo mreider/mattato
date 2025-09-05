@@ -188,7 +188,9 @@ struct DesktopTimerView: View {
                     Picker("Project", selection: $selectedProject) {
                         Text("None").tag("")
                         ForEach(historyManager.preferences.projects.sorted(by: <), id: \.self) { project in
-                            Text(project).tag(project)
+                            let detail = historyManager.preferences.projectDetails[project] ?? ""
+                            let displayText = detail.isEmpty ? project : "\(project) — \(detail.count > 35 ? String(detail.prefix(35)) + ".." : detail)"
+                            Text(displayText).tag(project)
                         }
                     }
                     .pickerStyle(.menu)

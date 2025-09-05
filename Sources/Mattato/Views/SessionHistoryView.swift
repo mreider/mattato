@@ -97,11 +97,11 @@ struct SessionHistoryView: View {
                     Picker("", selection: $selectedProjectFilter) {
                         Text("All").tag("")
                         ForEach(historyManager.preferences.projects.sorted(by: <), id: \.self) { project in
-                            Text(project).tag(project)
+                            Text(formatProjectDisplayText(project: project)).tag(project)
                         }
                     }
                     .pickerStyle(.menu)
-                    .frame(width: 120, height: 22)
+                    .frame(width: 140, height: 22)
                 }
                 
                 Spacer()
@@ -426,6 +426,18 @@ struct SessionHistoryView: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
+    }
+    
+    private func formatProjectDisplayText(project: String) -> String {
+        let detail = historyManager.preferences.projectDetails[project] ?? ""
+        if detail.isEmpty {
+            return project
+        }
+        
+        let maxDetailLength = 35
+        let truncatedDetail = detail.count > maxDetailLength ? String(detail.prefix(maxDetailLength)) + ".." : detail
+        
+        return "\(project) — \(truncatedDetail)"
     }
     
     private func sessionRow(_ session: Session) -> some View {

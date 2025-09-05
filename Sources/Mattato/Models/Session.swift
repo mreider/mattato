@@ -119,6 +119,7 @@ struct UserPreferences: Codable {
     var lastUsedProject: String = ""
     var customers: [String] = []
     var projects: [String] = []
+    var projectDetails: [String: String] = [:]
     var desktopTimer: Bool = false
     var desktopTimerSize: Double = 128.0
     var playSoundEnabled: Bool = false
@@ -161,6 +162,7 @@ struct UserPreferences: Codable {
         lastUsedProject = try container.decodeIfPresent(String.self, forKey: .lastUsedProject) ?? ""
         customers = try container.decodeIfPresent([String].self, forKey: .customers) ?? []
         projects = try container.decodeIfPresent([String].self, forKey: .projects) ?? []
+        projectDetails = try container.decodeIfPresent([String: String].self, forKey: .projectDetails) ?? [:]
         desktopTimer = try container.decodeIfPresent(Bool.self, forKey: .desktopTimer) ?? false
         desktopTimerSize = try container.decodeIfPresent(Double.self, forKey: .desktopTimerSize) ?? 128.0
         playSoundEnabled = try container.decodeIfPresent(Bool.self, forKey: .playSoundEnabled) ?? false

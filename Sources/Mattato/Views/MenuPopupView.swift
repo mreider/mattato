@@ -83,7 +83,7 @@ struct MenuPopupView: View {
                     }
                 }
                 .pickerStyle(.menu)
-                .frame(width: 120)
+                .frame(width: 133)
                 .disabled(timerManager.state == .running || timerManager.state == .paused)
                 .opacity(timerManager.state == .running || timerManager.state == .paused ? 0.6 : 1.0)
                 .onChange(of: selectedCustomer) { _ in updateSelectedCustomer() }
@@ -105,11 +105,11 @@ struct MenuPopupView: View {
                 Picker("", selection: $selectedProject) {
                     Text("(none)").tag("")
                     ForEach(historyManager.preferences.projects.sorted(by: <), id: \.self) { project in
-                        Text(project).tag(project)
+                        Text(formatProjectDisplayText(project: project)).tag(project)
                     }
                 }
                 .pickerStyle(.menu)
-                .frame(width: 120)
+                .frame(width: 133)
                 .disabled(timerManager.state == .running || timerManager.state == .paused)
                 .opacity(timerManager.state == .running || timerManager.state == .paused ? 0.6 : 1.0)
                 .onChange(of: selectedProject) { _ in updateSelectedProject() }
@@ -299,7 +299,7 @@ struct MenuPopupView: View {
             }
         }
         .padding()
-        .frame(width: 320)
+        .frame(width: 333, height: 460)
         .onAppear {
             loadInitialValues()
         }
@@ -688,7 +688,7 @@ struct MenuPopupView: View {
     
     private func showProjectManager() {
         let projectWindow = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 350),
+            contentRect: NSRect(x: 0, y: 0, width: 600, height: 400),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
@@ -699,6 +699,18 @@ struct MenuPopupView: View {
         projectWindow.center()
         projectWindow.level = .floating
         projectWindow.makeKeyAndOrderFront(nil)
+    }
+    
+    private func formatProjectDisplayText(project: String) -> String {
+        let detail = historyManager.preferences.projectDetails[project] ?? ""
+        if detail.isEmpty {
+            return project
+        }
+        
+        let maxDetailLength = 35
+        let truncatedDetail = detail.count > maxDetailLength ? String(detail.prefix(maxDetailLength)) + ".." : detail
+        
+        return "\(project) — \(truncatedDetail)"
     }
     
     private func showSessionHistoryWindow() {
