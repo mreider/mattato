@@ -1095,7 +1095,7 @@ struct SessionHistoryView: View {
         }
         let uniqueDays = Set(filteredSessions.map { calendar.startOfDay(for: $0.startTime) }).count
         
-        alert.messageText = "Inject Gap Sessions"
+        alert.messageText = "Inject Sessions"
         let projectText = injectProject == "(none)" ? "no project" : "project '\(injectProject)'"
         let customerText = injectCustomer == "(none)" ? "no customer" : "customer '\(injectCustomer)'"
         alert.informativeText = "This will analyze \(uniqueDays) day\(uniqueDays == 1 ? "" : "s") of sessions in the selected date range and inject new sessions to fill any gaps between \(formatTime(injectFromTime)) and \(formatTime(injectToTime)) each day. New sessions will use \(projectText) and \(customerText). Are you sure you want to do this?"
@@ -1187,14 +1187,14 @@ struct SessionHistoryView: View {
         // Show completion message
         let completionAlert = NSAlert()
         completionAlert.messageText = "Inject Sessions Complete"
-        completionAlert.informativeText = "\(injectedCount) gap sessions were injected across \(sessionsByDay.count) day\(sessionsByDay.count == 1 ? "" : "s")."
+        completionAlert.informativeText = "\(injectedCount) Sessions were injected across \(sessionsByDay.count) day\(sessionsByDay.count == 1 ? "" : "s")."
         completionAlert.alertStyle = .informational
         completionAlert.addButton(withTitle: "OK")
         completionAlert.runModal()
     }
     
     private func createGapSession(from startTime: Date, to endTime: Date) -> Session {
-        let description = "Gap session (\(formatTime(startTime)) - \(formatTime(endTime)))"
+        let description = "Work session (\(formatTime(startTime)) - \(formatTime(endTime)))"
         let customer = injectCustomer == "(none)" ? nil : injectCustomer
         let project = injectProject == "(none)" ? nil : injectProject
         
