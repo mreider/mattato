@@ -5,11 +5,11 @@
 
 set -e
 
-SOURCE_PNG="docs/robot-head.png"
-ICONSET_DIR="Sources/Mattato/Resources/AppIcon.iconset"
-ICNS_FILE="Sources/Mattato/Resources/AppIcon.icns"
+SOURCE_PNG="docs/tomato-512x512.png"
+ICONSET_DIR="MacOS/Sources/Mattato/Resources/AppIcon.iconset"
+ICNS_FILE="MacOS/Sources/Mattato/Resources/AppIcon.icns"
 
-echo "🤖 Creating Mattato app icons..."
+echo "🍅 Creating Mattato app icons..."
 
 # Check if source PNG exists
 if [ ! -f "$SOURCE_PNG" ]; then

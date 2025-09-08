@@ -81,12 +81,12 @@ create_app_bundle() {
     chmod +x "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}"
     
     # Copy resources
-    if [ -f "Sources/Mattato/Resources/AppIcon.icns" ]; then
-        cp "Sources/Mattato/Resources/AppIcon.icns" "${APP_BUNDLE}/Contents/Resources/"
+    if [ -f "MacOS/Sources/Mattato/Resources/AppIcon.icns" ]; then
+        cp "MacOS/Sources/Mattato/Resources/AppIcon.icns" "${APP_BUNDLE}/Contents/Resources/"
     fi
     
-    if [ -f "Sources/Mattato/Resources/tomato-512x512.png" ]; then
-        cp "Sources/Mattato/Resources/tomato-512x512.png" "${APP_BUNDLE}/Contents/Resources/"
+    if [ -f "MacOS/Sources/Mattato/Resources/tomato-512x512.png" ]; then
+        cp "MacOS/Sources/Mattato/Resources/tomato-512x512.png" "${APP_BUNDLE}/Contents/Resources/"
     fi
     
     # Copy provisioning profile for App Store builds
@@ -212,7 +212,7 @@ else
     # Sign with Developer ID
     echo "Code signing..."
     codesign --force --options runtime --timestamp \
-        --entitlements "Sources/Mattato/Resources/Mattato.entitlements" \
+        --entitlements "MacOS/Sources/Mattato/Resources/Mattato.entitlements" \
         --sign "$DEVELOPER_ID" \
         "${APP_BUNDLE}"
     

@@ -17,7 +17,7 @@ let package = Package(
         .executableTarget(
             name: "Mattato",
             dependencies: [],
-            path: "Sources/Mattato",
+            path: "MacOS/Sources/Mattato",
             exclude: ["Resources/Info.plist"],
             resources: [
                 .process("Resources", localization: .none)

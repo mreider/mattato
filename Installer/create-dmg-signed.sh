@@ -13,7 +13,7 @@ echo "🔐 Code signing with: $DEVELOPER_ID"
 
 # Code sign the app bundle with hardened runtime and timestamp
 codesign --force --verbose --options runtime --timestamp \
-    --entitlements "Sources/Mattato/Resources/Mattato.entitlements" \
+    --entitlements "MacOS/Sources/Mattato/Resources/Mattato.entitlements" \
     --sign "$DEVELOPER_ID" \
     "${APP_BUNDLE}"
 

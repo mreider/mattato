@@ -1,0 +1,51 @@
+{
+  "name": "mattato-electron",
+  "version": "1.0.0",
+  "description": "Cross-platform Pomodoro timer with session tracking",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "build-win": "electron-builder --win",
+    "build-mac": "electron-builder --mac",
+    "build-linux": "electron-builder --linux"
+  },
+  "keywords": [
+    "pomodoro",
+    "timer",
+    "productivity",
+    "electron"
+  ],
+  "author": "Matthew Reider",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^27.0.0",
+    "electron-builder": "^24.6.4"
+  },
+  "dependencies": {
+    "electron-store": "^8.1.0"
+  },
+  "build": {
+    "appId": "com.mattato.timer",
+    "productName": "Mattato Timer",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "assets/icon-512x512.png"
+    },
+    "win": {
+      "icon": "assets/icon.ico"
+    },
+    "linux": {
+      "icon": "assets/icon-512x512.png",
+      "category": "Office"
+    }
+  }
+}

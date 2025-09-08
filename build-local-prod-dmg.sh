@@ -13,6 +13,11 @@ RELEASES_DIR="releases"
 echo "Building Mattato v$VERSION..."
 
 mkdir -p "$RELEASES_DIR"
+
+# Clean up old DMG files first (even if build fails later)
+echo "🧹 Cleaning up old DMG files..."
+rm -f "$RELEASES_DIR"/*.dmg 2>/dev/null || true
+
 rm -rf "$TEMP_DIR" "$DMG_DIR" 2>/dev/null || true
 
 DEVELOPER_ID=$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -1 | grep -o '"[^"]*"' | sed 's/"//g')
@@ -47,17 +52,17 @@ mkdir -p "${APP_BUNDLE}/Contents/Resources"
 cp "${BUILD_DIR}/${APP_NAME}" "${APP_BUNDLE}/Contents/MacOS/"
 chmod +x "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}"
 
-if [ -f "Sources/Mattato/Resources/AppIcon.icns" ]; then
-    cp "Sources/Mattato/Resources/AppIcon.icns" "${APP_BUNDLE}/Contents/Resources/"
+if [ -f "MacOS/Sources/Mattato/Resources/AppIcon.icns" ]; then
+    cp "MacOS/Sources/Mattato/Resources/AppIcon.icns" "${APP_BUNDLE}/Contents/Resources/"
 fi
 
-if [ -f "Sources/Mattato/Resources/tomato-512x512.png" ]; then
-    cp "Sources/Mattato/Resources/tomato-512x512.png" "${APP_BUNDLE}/Contents/Resources/"
+if [ -f "MacOS/Sources/Mattato/Resources/tomato-512x512.png" ]; then
+    cp "MacOS/Sources/Mattato/Resources/tomato-512x512.png" "${APP_BUNDLE}/Contents/Resources/"
 fi
 
-if [ -d "Sources/Mattato/Resources" ]; then
-    find "Sources/Mattato/Resources" -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" | while read file; do
-        if [ "$file" != "Sources/Mattato/Resources/tomato-512x512.png" ] && [ "$file" != "Sources/Mattato/Resources/AppIcon.icns" ]; then
+if [ -d "MacOS/Sources/Mattato/Resources" ]; then
+    find "MacOS/Sources/Mattato/Resources" -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" | while read file; do
+        if [ "$file" != "MacOS/Sources/Mattato/Resources/tomato-512x512.png" ] && [ "$file" != "MacOS/Sources/Mattato/Resources/AppIcon.icns" ]; then
             cp "$file" "${APP_BUNDLE}/Contents/Resources/"
         fi
     done
@@ -100,7 +105,7 @@ EOF
 
 echo "Code signing..."
 codesign --force --options runtime --timestamp \
-    --entitlements "Sources/Mattato/Resources/Mattato.entitlements" \
+    --entitlements "MacOS/Sources/Mattato/Resources/Mattato.entitlements" \
     --sign "$DEVELOPER_ID" \
     "${APP_BUNDLE}"
 

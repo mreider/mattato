@@ -40,9 +40,9 @@ mkdir -p "${APP_BUNDLE}/Contents/Resources"
 cp "${BUILD_DIR}/${APP_NAME}" "${APP_BUNDLE}/Contents/MacOS/"
 
 # Copy the app icon if it exists
-if [ -f "Sources/Mattato/Resources/AppIcon.icns" ]; then
+if [ -f "MacOS/Sources/Mattato/Resources/AppIcon.icns" ]; then
     echo "🎨 Adding app icon..."
-    cp "Sources/Mattato/Resources/AppIcon.icns" "${APP_BUNDLE}/Contents/Resources/"
+    cp "MacOS/Sources/Mattato/Resources/AppIcon.icns" "${APP_BUNDLE}/Contents/Resources/"
 else
     echo "⚠️  Warning: App icon not found, run ./Installer/create-icons.sh first"
 fi

@@ -13,6 +13,10 @@ echo "📦 Building Chrome extension v$VERSION..."
 # Create releases directory if it doesn't exist
 mkdir -p "$BUILD_DIR"
 
+# Clean up old extension files first (even if build fails later)
+echo "🧹 Cleaning up old extension files..."
+rm -f "$BUILD_DIR"/${EXTENSION_NAME}-*.zip 2>/dev/null || true
+
 # Create temporary directory for packaging
 TEMP_DIR="temp_extension"
 rm -rf "$TEMP_DIR" 2>/dev/null || true
