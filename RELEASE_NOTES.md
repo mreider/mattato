@@ -1,6 +1,6 @@
 ## Release Notes 
 
-## What's New in v0.11.0 
+## What's New in v0.12.0 
 
 ### 🔧 Improvements
-- Too many to list
+- No more robots
