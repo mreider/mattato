@@ -6,7 +6,7 @@ A macOS menu bar Pomodoro timer with session tracking
 
 ### Download DMG
 
-Download the latest release from the [mattato.com](https://mreider.github.io/mattato/):
+Download the latest release [here](https://mreider.github.io/mattato/):
 
 ## Data Storage
 
